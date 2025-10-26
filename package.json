@@ -4,7 +4,10 @@
   "description": "A Next.js library for building middleware across runtimes",
   "main": "index.js",
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "test": "vitest",
+    "build": "rollup -c"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
