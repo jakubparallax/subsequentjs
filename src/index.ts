@@ -1,14 +1,11 @@
-export * from './create';
-export * from './middleware';
-export * from './proxy';
-export * from './api';
-export * from './types';
-export * from './config';
-export * from './utils';
-export * from './middleware/response';
-export * from './middleware/types';
-export * from './middleware/create-middleware';
-export * from './middleware/index';
-export * from './middleware/response';
-export * from './proxy/index';
-export * from './api/index';
+import { create } from './create';
+import { createMiddleware } from './middleware';
+import { middlewareResponse } from './middleware/response';
+
+const subsequent = {
+  create,
+  createMiddleware,
+  middlewareResponse,
+}
+
+export default subsequent;
