@@ -21,8 +21,13 @@ export const createApiHandler = (middlewares: Middleware[], _config: SubsequentC
 
     const middlewareStack = stackMiddlewares(requestedMiddlewares);
 
-    const response = await middlewareStack(request);
-
-    return NextResponse.json(response);
+    try {
+      const response = await middlewareStack(request);
+  
+      return NextResponse.json(response);
+    } catch (error) {
+      console.error(error);
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    }
   };
 }

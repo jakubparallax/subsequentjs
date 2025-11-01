@@ -44,7 +44,8 @@ export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddleware
     });
 
     if (!nodeMiddlewareResponse.ok) {
-      return NextResponse.json({ error: 'Failed to call middleware' }, { status: 500 });
+      const { error } = await nodeMiddlewareResponse.json();
+      throw new Error('Failed to call node middleware: ' + error);
     }
 
     const nodeMiddlewareResult = await nodeMiddlewareResponse.json();
