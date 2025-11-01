@@ -8,7 +8,11 @@ export type SubsequentMiddleware = {
   options?: SubsequentMiddlewareOptions;
 }
 
-export type SubsequentMiddlewareHandler = (request: NextRequest) => Promise<ReturnType<(typeof SubsequentMiddlewareResponse)[keyof typeof SubsequentMiddlewareResponse]>>;
+export type SubsequentMiddlewareResponse = ReturnType<(typeof SubsequentMiddlewareResponse)[keyof typeof SubsequentMiddlewareResponse]>;
+
+export type SubsequentMiddlewareHandler = (request: NextRequest, next: SubsequentMiddlewareHandler) => Promise<SubsequentMiddlewareResponse>;
+
+export type SubsequentStackedMiddlewareHandler = (request: NextRequest) => Promise<SubsequentMiddlewareResponse>;
 
 export type SubsequentMiddlewareMatcher = string | string[];
 
