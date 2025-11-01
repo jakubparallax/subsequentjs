@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { SubsequentMiddlewareReturn } from "./types";
+import { MiddlewareResponseType } from "./types";
 
-export const SubsequentMiddlewareResponse = {
-  next: (): SubsequentMiddlewareReturn => ({ type: 'next' }),
-  json: (data: any): SubsequentMiddlewareReturn => ({ type: 'json', data }),
-  redirect: (url: URL): SubsequentMiddlewareReturn => ({ type: 'redirect', redirect: url }),
-  code: (code: number, message: string): SubsequentMiddlewareReturn => ({ type: 'code', code, message }),
+export const middlewareResponse = {
+  next: (): MiddlewareResponseType => ({ type: 'next' }),
+  json: (data: any): MiddlewareResponseType => ({ type: 'json', data }),
+  redirect: (url: URL): MiddlewareResponseType => ({ type: 'redirect', redirect: url }),
+  code: (code: number, message: string): MiddlewareResponseType => ({ type: 'code', code, message }),
 }
 
-export function toNextResponse(res: SubsequentMiddlewareReturn): NextResponse {
+export function toNextResponse(res: MiddlewareResponseType): NextResponse {
   switch (res.type) {
     case 'next':
       return NextResponse.next()

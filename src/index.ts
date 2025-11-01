@@ -1,4 +1,4 @@
-export * from './create-subsequent-stack';
+export * from './create';
 export * from './middleware';
 export * from './proxy';
 export * from './api';

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SubsequentStackConfig } from "../types";
+import { SubsequentConfig } from "../types";
 import { verifySubrequestToken } from "./subrequest-token";
 
-export const isSubsequentMiddlewareRoute = (request: NextRequest, config: SubsequentStackConfig): boolean => {
+export const isMiddlewareRoute = (request: NextRequest, config: SubsequentConfig): boolean => {
   const { pathname } = request.nextUrl;
   return pathname.startsWith(config.apiBasePath)
 }
@@ -11,7 +11,7 @@ const respondError = (message: string, status: number): NextResponse => {
   return NextResponse.json({ error: message }, { status });
 }
 
-export const handleSubsequentMiddlewareRequest = async (request: NextRequest, secret: string): Promise<NextResponse> => {
+export const handleMiddlewareRequest = async (request: NextRequest, secret: string): Promise<NextResponse> => {
   if (request.method !== 'POST') {
     return respondError('Method not allowed', 405);
   }

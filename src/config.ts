@@ -1,5 +1,5 @@
-import type { SubsequentStackConfig } from "./types";
+import type { SubsequentConfig } from "./types";
 
-export const defaultConfig: SubsequentStackConfig = {
+export const defaultConfig: SubsequentConfig = {
   apiBasePath: '/api/subsequent',
 }

@@ -1,12 +1,10 @@
 import type { ApiHandler } from "./types";
-import { SubsequentMiddleware } from "../middleware";
+import { Middleware } from "../middleware";
 import { NextRequest, NextResponse } from "next/server";
-import { SubsequentStackConfig } from "../types";
+import { SubsequentConfig } from "../types";
 import { stackMiddlewares } from "../utils";
 
-
-
-export const createApiHandler = (middlewares: SubsequentMiddleware[], config: SubsequentStackConfig): ApiHandler => {
+export const createApiHandler = (middlewares: Middleware[], _config: SubsequentConfig): ApiHandler => {
   return async (request: NextRequest) => {
     const requestedMiddlewareHeader = request.headers.get('x-subsequentjs-middleware');
     if (!requestedMiddlewareHeader) {

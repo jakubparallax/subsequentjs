@@ -1,21 +1,14 @@
 import type { NextRequest } from 'next/server';
-import type { SubsequentMiddlewareResponse } from './response';
+import type { MiddlewareResponseType } from './response';
 
-export type SubsequentMiddleware = {
+export type Middleware = {
   name: string;
-  matcher: SubsequentMiddlewareMatcher;
-  handler: SubsequentMiddlewareHandler;
-  options?: SubsequentMiddlewareOptions;
+  matcher: MiddlewareMatcher;
+  handler: MiddlewareHandler;
 }
 
-export type SubsequentMiddlewareResponseType = ReturnType<(typeof SubsequentMiddlewareResponse)[keyof typeof SubsequentMiddlewareResponse]>;
+export type MiddlewareHandler = (request: NextRequest, next: MiddlewareHandler) => Promise<MiddlewareResponseType>;
 
-export type SubsequentMiddlewareHandler = (request: NextRequest, next: SubsequentMiddlewareHandler) => Promise<SubsequentMiddlewareResponseType>;
+export type StackedMiddlewareHandler = (request: NextRequest) => Promise<MiddlewareResponseType>;
 
-export type SubsequentStackedMiddlewareHandler = (request: NextRequest) => Promise<SubsequentMiddlewareResponseType>;
-
-export type SubsequentMiddlewareMatcher = string | string[];
-
-export type SubsequentMiddlewareOptions = {
-  runtime?: 'node' | 'edge';
-};
+export type MiddlewareMatcher = string | string[];

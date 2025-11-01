@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SubsequentMiddleware, toNextResponse } from "../middleware";
+import { Middleware, toNextResponse } from "../middleware";
 import type { ProxyHandler } from "./types";
-import type { SubsequentStackConfig } from "../types";
-import { handleSubsequentMiddlewareRequest, isSubsequentMiddlewareRoute } from "./middleware-route";
+import type { SubsequentConfig } from "../types";
+import { handleMiddlewareRequest, isMiddlewareRoute } from "./middleware-route";
 import { stackMiddlewares } from "../utils";
 import { generateSubrequestToken } from "./subrequest-token";
 
-export const createProxyHandler = (middlewares: SubsequentMiddleware[], config: SubsequentStackConfig, secret: string): ProxyHandler => {
+export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddlewares: Middleware[], config: SubsequentConfig, secret: string): ProxyHandler => {
   return async (request: NextRequest) => {
-    if (isSubsequentMiddlewareRoute(request, config)) {
-      return await handleSubsequentMiddlewareRequest(request, secret);
+    if (isMiddlewareRoute(request, config)) {
+      return await handleMiddlewareRequest(request, secret);
     }
 
-    const matchingMiddleware = middlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
-    
-    const edgeMiddleware = matchingMiddleware.filter((middleware) => middleware.options?.runtime === 'edge');
-    const edgeMiddlewareHandler = stackMiddlewares(edgeMiddleware);
+    const matchingEdgeMiddlewares = edgeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+    const edgeMiddlewareHandler = stackMiddlewares(matchingEdgeMiddlewares);
     
     const edgeResponse = await edgeMiddlewareHandler(request);
 
@@ -23,12 +21,12 @@ export const createProxyHandler = (middlewares: SubsequentMiddleware[], config: 
       return toNextResponse(edgeResponse);
     }
     
-    const nodeMiddleware = matchingMiddleware.filter((middleware) => middleware.options?.runtime === 'node');
-    if (nodeMiddleware.length === 0) {
+    if (nodeMiddlewares.length === 0) {
       return NextResponse.next();
     }
     
-    const middlewareHeader = nodeMiddleware.map((middleware) => middleware.name).join(',');
+    const matchingNodeMiddlewares = nodeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+    const middlewareHeader = matchingNodeMiddlewares.map((middleware) => middleware.name).join(',');
     const body = await request.text();
 
     const middlewareToken = generateSubrequestToken(body, secret);
