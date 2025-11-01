@@ -21,11 +21,12 @@ export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddleware
       return toNextResponse(edgeResponse);
     }
     
-    if (nodeMiddlewares.length === 0) {
+    const matchingNodeMiddlewares = nodeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+
+    if (matchingNodeMiddlewares.length === 0) {
       return NextResponse.next();
     }
     
-    const matchingNodeMiddlewares = nodeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
     const middlewareHeader = matchingNodeMiddlewares.map((middleware) => middleware.name).join(',');
     const body = await request.text();
 

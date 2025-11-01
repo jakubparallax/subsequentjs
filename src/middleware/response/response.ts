@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { MiddlewareResponseType } from "./types";
 
 export const middlewareResponse = {
+  next: (_request: NextRequest): Promise<MiddlewareResponseType> => Promise.resolve({ type: 'next' }),
   json: (data: any): MiddlewareResponseType => ({ type: 'json', data }),
   redirect: (url: URL): MiddlewareResponseType => ({ type: 'redirect', redirect: url }),
   code: (code: number, message: string): MiddlewareResponseType => ({ type: 'code', code, message }),
