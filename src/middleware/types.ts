@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import type { MiddlewareResponseType } from './response';
+import type { middlewareResponse, MiddlewareResponseType } from './response';
 
 export type Middleware = {
   name: string;
@@ -7,7 +7,7 @@ export type Middleware = {
   handler: MiddlewareHandler;
 }
 
-export type MiddlewareHandler = (request: NextRequest, next: MiddlewareHandler) => Promise<MiddlewareResponseType>;
+export type MiddlewareHandler = (request: NextRequest, response: typeof middlewareResponse) => Promise<MiddlewareResponseType>;
 
 export type StackedMiddlewareHandler = (request: NextRequest) => Promise<MiddlewareResponseType>;
 
