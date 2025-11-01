@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SubsequentMiddleware } from "../middleware";
+import { SubsequentMiddleware, toNextResponse } from "../middleware";
 import type { ProxyHandler } from "./types";
 import type { SubsequentStackConfig } from "../types";
 import { handleSubsequentMiddlewareRequest, isSubsequentMiddlewareRoute } from "./middleware-route";
 import { stackMiddlewares } from "../utils";
+import { generateSubrequestToken } from "./subrequest-token";
 
 export const createProxyHandler = (middlewares: SubsequentMiddleware[], config: SubsequentStackConfig, secret: string): ProxyHandler => {
   return async (request: NextRequest) => {
@@ -19,13 +20,36 @@ export const createProxyHandler = (middlewares: SubsequentMiddleware[], config: 
     const edgeResponse = await edgeMiddlewareHandler(request);
 
     if (edgeResponse.type !== 'next') {
-      //TODO: Handle subsequent middleware response
-      // return edgeResponse;
+      return toNextResponse(edgeResponse);
     }
     
     const nodeMiddleware = matchingMiddleware.filter((middleware) => middleware.options?.runtime === 'node');
+    if (nodeMiddleware.length === 0) {
+      return NextResponse.next();
+    }
+    
+    const middlewareHeader = nodeMiddleware.map((middleware) => middleware.name).join(',');
+    const body = await request.text();
 
+    const middlewareToken = generateSubrequestToken(body, secret);
 
-    return NextResponse.next();
+    const nodeMiddlewareResponse = await fetch(new URL(config.apiBasePath, request.url), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...request.headers,
+        'x-subsequentjs-middleware-token': middlewareToken,
+        'x-subsequentjs-middleware': middlewareHeader,
+      },
+      body,
+    });
+
+    if (!nodeMiddlewareResponse.ok) {
+      return NextResponse.json({ error: 'Failed to call middleware' }, { status: 500 });
+    }
+
+    const nodeMiddlewareResult = await nodeMiddlewareResponse.json();
+
+    return toNextResponse(nodeMiddlewareResult);
   };
 }

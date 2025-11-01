@@ -11,5 +11,3 @@ export const stackMiddlewares = (middlewares: SubsequentMiddleware[], index = 0)
   }
   return async () => SubsequentMiddlewareResponse.next();
 }
-
-export const stackNodeMiddlewares = (middlewares: SubsequentMiddleware[]): SubsequentStackedMiddlewareHandler => {}
