@@ -145,6 +145,10 @@ const create = ({ nodeMiddlewares, edgeMiddlewares, config }) => {
     if (!SUBSEQUENTJS_SECRET) {
         throw new Error('SUBSEQUENTJS_SECRET is not set');
     }
+    const middlewareNames = [...nodeMiddlewares.map((middleware) => middleware.name), ...edgeMiddlewares.map((middleware) => middleware.name)];
+    if (middlewareNames.length !== new Set(middlewareNames).size) {
+        throw new Error('Middleware names must be unique');
+    }
     const fullConfig = {
         ...defaultConfig,
         ...config,
