@@ -2,7 +2,7 @@ import type { ApiHandler } from "./types";
 import { Middleware } from "../middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { SubsequentConfig } from "../types";
-import { stackMiddlewares } from "../utils";
+import { createOriginalRequestFromForwarded, stackMiddlewares } from "../utils";
 
 export const createApiHandler = (middlewares: Middleware[], _config: SubsequentConfig): ApiHandler => {
   return async (request: NextRequest) => {
@@ -19,19 +19,15 @@ export const createApiHandler = (middlewares: Middleware[], _config: SubsequentC
       return NextResponse.json({ error: 'No middleware found' }, { status: 404 });
     }
 
-    const middlewareStack = stackMiddlewares(requestedMiddlewares);
+    const nodeMiddlewareHandler = stackMiddlewares(requestedMiddlewares);
 
     try {
-      const originalUrl = request.headers.get('x-subsequentjs-forwarded-url');
-      const originalMethod = request.headers.get('x-subsequentjs-forwarded-method');
-      if (!originalUrl || !originalMethod) {
-        return NextResponse.json({ error: 'Original URL or method not found' }, { status: 400 });
-      }
+      // Use the forwarded request headers to reconstruct the original request
+      const originalRequest = createOriginalRequestFromForwarded(request);
 
-      const originalRequest = new NextRequest(originalUrl, { method: originalMethod, headers: request.headers, body: !['GET', 'HEAD'].includes(originalMethod) ? request.body : null })
+      const response = await nodeMiddlewareHandler(originalRequest);
 
-      const response = await middlewareStack(originalRequest);
-  
+      // Respond with the subsequent response object, to be converted to a NextResponse by the proxy
       return NextResponse.json(response);
     } catch (error) {
       console.error(error);

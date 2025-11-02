@@ -64,6 +64,13 @@ const handleMiddlewareRequest = async (request, secret) => {
     return NextResponse.next();
 };
 
+/**
+ * Stack middleware array into a single recursive middleware handler
+ * Injects a next function into the middleware handler, to allow for chaining
+ * @param middlewares - The array of middleware to stack
+ * @param index - INTERNAL recursion index
+ * @returns A single middleware handler that can be called with a NextRequest, and will call middleware until a response or next is returned
+ */
 const stackMiddlewares = (middlewares, index = 0) => {
     const current = middlewares[index];
     if (current) {
@@ -76,39 +83,97 @@ const stackMiddlewares = (middlewares, index = 0) => {
     return async () => ({ type: 'next' });
 };
 
+const METHODS_WITH_BODY = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const requestShouldHaveBody = (method) => METHODS_WITH_BODY.includes(method);
+/**
+ * Create a new request object to be sent to the middleware API route, with additional headers for piecing together the original request after forwarding
+ * @param request - The incoming request
+ * @param matchingNodeMiddlewares - The middleware(s) to execute in the API route
+ * @param secret - The secret used to sign the request
+ * @returns A new request object to be sent to the middleware API route
+ */
+const createForwardingRequest = async (request, matchingNodeMiddlewares, secret) => {
+    // Join middleware names, for the middleware API route to identify which middleware(s) to run
+    const middlewareHeader = matchingNodeMiddlewares.map((middleware) => middleware.name).join(',');
+    // Grab body to sign
+    const body = await request.text();
+    // Generate token, for authenticating with middleware API routes
+    const middlewareToken = generateSubrequestToken(body, secret);
+    // Copy headers
+    const headers = new Headers(request.headers);
+    // Set Subsequent headers, used for piecing together the original request after forwarding
+    headers.set('x-subsequentjs-middleware-token', middlewareToken);
+    headers.set('x-subsequentjs-middleware', middlewareHeader);
+    headers.set('x-subsequentjs-forwarded-url', request.url);
+    headers.set('x-subsequentjs-forwarded-method', request.method);
+    // If the method does not have a body, set the body to null
+    const finalRequestBody = requestShouldHaveBody(request.method) ? body : null;
+    return {
+        method: 'POST',
+        headers,
+        body: finalRequestBody,
+    };
+};
+/**
+ * Create a new NextRequest from the forwarded request headers
+ * @param request - The forwarded request
+ * @returns A new NextRequest with the original URL, method, headers, and body
+ */
+const createOriginalRequestFromForwarded = (request) => {
+    const originalUrl = request.headers.get('x-subsequentjs-forwarded-url');
+    const originalMethod = request.headers.get('x-subsequentjs-forwarded-method');
+    if (!originalUrl || !originalMethod) {
+        throw new Error('Original URL or method not found');
+    }
+    const originalHeaders = new Headers(request.headers);
+    originalHeaders.delete('x-subsequentjs-middleware-token');
+    originalHeaders.delete('x-subsequentjs-middleware');
+    originalHeaders.delete('x-subsequentjs-forwarded-url');
+    originalHeaders.delete('x-subsequentjs-forwarded-method');
+    const originalBody = requestShouldHaveBody(originalMethod) ? request.body : null;
+    const requestOptions = {
+        method: originalMethod,
+        headers: originalHeaders,
+        body: originalBody,
+    };
+    return new NextRequest(originalUrl, requestOptions);
+};
+const buildMiddlewareApiUrl = (config, request) => {
+    return new URL(config.apiBasePath, request.url);
+};
+
+const runEdgeMiddleware = async (request, edgeMiddlewares) => {
+    const edgeMiddlewareHandler = stackMiddlewares(edgeMiddlewares);
+    const edgeResponse = await edgeMiddlewareHandler(request);
+    return edgeResponse;
+};
+const runNodeMiddleware = async (request, nodeMiddlewares, config, secret) => {
+    const forwardingRequest = await createForwardingRequest(request, nodeMiddlewares, secret);
+    const middlewareApiUrl = buildMiddlewareApiUrl(config, request);
+    const nodeMiddlewareResponse = await fetch(middlewareApiUrl, forwardingRequest);
+    if (!nodeMiddlewareResponse.ok) {
+        const { error } = await nodeMiddlewareResponse.json();
+        throw new Error('Failed to call node middleware: ' + error);
+    }
+    const nodeMiddlewareResult = await nodeMiddlewareResponse.json();
+    return nodeMiddlewareResult;
+};
+
 const createProxyHandler = (edgeMiddlewares, nodeMiddlewares, config, secret) => {
     return async (request) => {
         if (isMiddlewareRoute(request, config)) {
             return await handleMiddlewareRequest(request, secret);
         }
         const matchingEdgeMiddlewares = edgeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
-        const edgeMiddlewareHandler = stackMiddlewares(matchingEdgeMiddlewares);
-        const edgeResponse = await edgeMiddlewareHandler(request);
-        if (edgeResponse.type !== 'next') {
+        const edgeResponse = await runEdgeMiddleware(request, matchingEdgeMiddlewares);
+        // Skip node middleware if we're responding
+        if (edgeResponse.type !== 'next')
             return toNextResponse(edgeResponse);
-        }
         const matchingNodeMiddlewares = nodeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
-        if (matchingNodeMiddlewares.length === 0) {
+        if (matchingNodeMiddlewares.length === 0)
             return NextResponse.next();
-        }
-        const middlewareHeader = matchingNodeMiddlewares.map((middleware) => middleware.name).join(',');
-        const body = await request.text();
-        const middlewareToken = generateSubrequestToken(body, secret);
-        const headers = new Headers(request.headers);
-        headers.set('x-subsequentjs-middleware-token', middlewareToken);
-        headers.set('x-subsequentjs-middleware', middlewareHeader);
-        headers.set('x-subsequentjs-forwarded-url', request.url);
-        headers.set('x-subsequentjs-forwarded-method', request.method);
-        const nodeMiddlewareResponse = await fetch(new URL(config.apiBasePath, request.url), {
-            method: 'POST',
-            headers,
-            body: !['GET', 'HEAD'].includes(request.method) ? body : null,
-        });
-        if (!nodeMiddlewareResponse.ok) {
-            const { error } = await nodeMiddlewareResponse.json();
-            throw new Error('Failed to call node middleware: ' + error);
-        }
-        const nodeMiddlewareResult = await nodeMiddlewareResponse.json();
+        const nodeMiddlewareResult = await runNodeMiddleware(request, matchingNodeMiddlewares, config, secret);
+        // Respond with the node middleware result
         return toNextResponse(nodeMiddlewareResult);
     };
 };
@@ -124,15 +189,12 @@ const createApiHandler = (middlewares, _config) => {
         if (requestedMiddlewares.length === 0) {
             return NextResponse.json({ error: 'No middleware found' }, { status: 404 });
         }
-        const middlewareStack = stackMiddlewares(requestedMiddlewares);
+        const nodeMiddlewareHandler = stackMiddlewares(requestedMiddlewares);
         try {
-            const originalUrl = request.headers.get('x-subsequentjs-forwarded-url');
-            const originalMethod = request.headers.get('x-subsequentjs-forwarded-method');
-            if (!originalUrl || !originalMethod) {
-                return NextResponse.json({ error: 'Original URL or method not found' }, { status: 400 });
-            }
-            const originalRequest = new NextRequest(originalUrl, { method: originalMethod, headers: request.headers, body: !['GET', 'HEAD'].includes(originalMethod) ? request.body : null });
-            const response = await middlewareStack(originalRequest);
+            // Use the forwarded request headers to reconstruct the original request
+            const originalRequest = createOriginalRequestFromForwarded(request);
+            const response = await nodeMiddlewareHandler(originalRequest);
+            // Respond with the subsequent response object, to be converted to a NextResponse by the proxy
             return NextResponse.json(response);
         }
         catch (error) {
