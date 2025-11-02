@@ -32,16 +32,15 @@ export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddleware
 
     const middlewareToken = generateSubrequestToken(body, secret);
 
+    const headers = new Headers(request.headers);
+    headers.set('x-subsequentjs-middleware-token', middlewareToken);
+    headers.set('x-subsequentjs-middleware', middlewareHeader);
+    headers.set('x-subsequentjs-forwarded-url', request.url);
+    headers.set('x-subsequentjs-forwarded-method', request.method);
+
     const nodeMiddlewareResponse = await fetch(new URL(config.apiBasePath, request.url), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...request.headers,
-        'x-subsequentjs-middleware-token': middlewareToken,
-        'x-subsequentjs-middleware': middlewareHeader,
-        'x-subsequentjs-forwarded-url': request.url,
-        'x-subsequentjs-forwarded-method': request.method,
-      },
+      headers,
       body: !['GET', 'HEAD'].includes(request.method) ? body : null,
     });
 
