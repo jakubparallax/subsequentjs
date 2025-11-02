@@ -4,6 +4,7 @@ import type { ProxyHandler } from "./types";
 import type { SubsequentConfig } from "../types";
 import { handleMiddlewareRequest, isMiddlewareRoute } from "./middleware-route";
 import { runEdgeMiddleware, runNodeMiddleware } from "./run-middleware";
+import { filterMiddlewaresByPath } from "../utils";
 
 export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddlewares: Middleware[], config: SubsequentConfig, secret: string): ProxyHandler => {
   return async (request: NextRequest) => {
@@ -11,13 +12,13 @@ export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddleware
       return await handleMiddlewareRequest(request, secret);
     }
 
-    const matchingEdgeMiddlewares = edgeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+    const matchingEdgeMiddlewares = filterMiddlewaresByPath(edgeMiddlewares, request.nextUrl.pathname);
     const edgeResponse = await runEdgeMiddleware(request, matchingEdgeMiddlewares);
 
     // Skip node middleware if we're responding
     if (edgeResponse.type !== 'next') return toNextResponse(edgeResponse);
     
-    const matchingNodeMiddlewares = nodeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+    const matchingNodeMiddlewares = filterMiddlewaresByPath(nodeMiddlewares, request.nextUrl.pathname);
     
     if (matchingNodeMiddlewares.length === 0) return NextResponse.next();
 

@@ -142,6 +142,41 @@ const buildMiddlewareApiUrl = (config, request) => {
     return new URL(config.apiBasePath, request.url);
 };
 
+const pathMatchesMatcher = (path, matcher) => {
+    if (Array.isArray(matcher)) {
+        return matcher.some((m) => pathMatchesMatcher(path, m));
+    }
+    const patterns = matcher.split('|').map((pattern) => pattern.trim()).filter(Boolean);
+    let matched = false;
+    for (const pattern of patterns) {
+        const isNegated = pattern.startsWith('!');
+        // Remove negation prefix if present
+        const cleanPattern = isNegated ? pattern.slice(1) : pattern;
+        // Convert pattern to regex
+        const regexString = '^' + cleanPattern
+            .split('/').map(segment => {
+            if (segment === '**')
+                return '.*'; // multi-segment wildcard
+            if (segment === '*')
+                return '[^/]+?'; // single segment wildcard
+            if (segment.startsWith(':'))
+                return '[^/]+?'; // param
+            return segment.replace(/[.+^${}()|[\]\\]/g, '\\$&'); // escape literal
+        }).join('/') + '$';
+        const regex = new RegExp(regexString);
+        if (regex.test(path)) {
+            if (isNegated) {
+                return false;
+            }
+            matched = true;
+        }
+    }
+    return matched;
+};
+const filterMiddlewaresByPath = (middlewares, path) => {
+    return middlewares.filter((middleware) => pathMatchesMatcher(path, middleware.matcher));
+};
+
 const runEdgeMiddleware = async (request, edgeMiddlewares) => {
     const edgeMiddlewareHandler = stackMiddlewares(edgeMiddlewares);
     const edgeResponse = await edgeMiddlewareHandler(request);
@@ -164,12 +199,12 @@ const createProxyHandler = (edgeMiddlewares, nodeMiddlewares, config, secret) =>
         if (isMiddlewareRoute(request, config)) {
             return await handleMiddlewareRequest(request, secret);
         }
-        const matchingEdgeMiddlewares = edgeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+        const matchingEdgeMiddlewares = filterMiddlewaresByPath(edgeMiddlewares, request.nextUrl.pathname);
         const edgeResponse = await runEdgeMiddleware(request, matchingEdgeMiddlewares);
         // Skip node middleware if we're responding
         if (edgeResponse.type !== 'next')
             return toNextResponse(edgeResponse);
-        const matchingNodeMiddlewares = nodeMiddlewares.filter((middleware) => middleware.matcher === request.nextUrl.pathname);
+        const matchingNodeMiddlewares = filterMiddlewaresByPath(nodeMiddlewares, request.nextUrl.pathname);
         if (matchingNodeMiddlewares.length === 0)
             return NextResponse.next();
         const nodeMiddlewareResult = await runNodeMiddleware(request, matchingNodeMiddlewares, config, secret);
