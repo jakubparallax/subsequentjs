@@ -30,40 +30,6 @@ function toNextResponse(res) {
     }
 }
 
-const generateSubrequestToken = (body, secret) => {
-    const token = jwt.sign({ request: JSON.stringify(body) }, secret, { expiresIn: '5min' });
-    return token;
-};
-const verifySubrequestToken = (token, body, secret) => {
-    const decoded = jwt.verify(token, secret);
-    if (typeof decoded === 'string') {
-        return false;
-    }
-    return decoded.request === JSON.stringify(body);
-};
-
-const isMiddlewareRoute = (request, config) => {
-    const { pathname } = request.nextUrl;
-    return pathname.startsWith(config.apiBasePath);
-};
-const respondError = (message, status) => {
-    return NextResponse.json({ error: message }, { status });
-};
-const handleMiddlewareRequest = async (request, secret) => {
-    if (request.method !== 'POST') {
-        return respondError('Method not allowed', 405);
-    }
-    const body = await request.text();
-    const middlewareSubrequestToken = request.headers.get('x-subsequentjs-middleware-token');
-    if (!middlewareSubrequestToken) {
-        return respondError('Middleware token is required', 401);
-    }
-    if (!verifySubrequestToken(middlewareSubrequestToken, body, secret)) {
-        return respondError('Invalid middleware token', 401);
-    }
-    return NextResponse.next();
-};
-
 /**
  * Stack middleware array into a single recursive middleware handler
  * Injects a next function into the middleware handler, to allow for chaining
@@ -81,6 +47,18 @@ const stackMiddlewares = (middlewares, index = 0) => {
         };
     }
     return async () => ({ type: 'next' });
+};
+
+const generateSubrequestToken = (body, secret) => {
+    const token = jwt.sign({ request: JSON.stringify(body) }, secret, { expiresIn: '5min' });
+    return token;
+};
+const verifySubrequestToken = (token, body, secret) => {
+    const decoded = jwt.verify(token, secret);
+    if (typeof decoded === 'string') {
+        return false;
+    }
+    return decoded.request === JSON.stringify(body);
 };
 
 const METHODS_WITH_BODY = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -177,6 +155,28 @@ const filterMiddlewaresByPath = (middlewares, path) => {
     return middlewares.filter((middleware) => pathMatchesMatcher(path, middleware.matcher));
 };
 
+const isMiddlewareRoute = (request, config) => {
+    const { pathname } = request.nextUrl;
+    return pathname.startsWith(config.apiBasePath);
+};
+const respondError = (message, status) => {
+    return NextResponse.json({ error: message }, { status });
+};
+const handleMiddlewareRequest = async (request, secret) => {
+    if (request.method !== 'POST') {
+        return respondError('Method not allowed', 405);
+    }
+    const body = await request.text();
+    const middlewareSubrequestToken = request.headers.get('x-subsequentjs-middleware-token');
+    if (!middlewareSubrequestToken) {
+        return respondError('Middleware token is required', 401);
+    }
+    if (!verifySubrequestToken(middlewareSubrequestToken, body, secret)) {
+        return respondError('Invalid middleware token', 401);
+    }
+    return NextResponse.next();
+};
+
 const runEdgeMiddleware = async (request, edgeMiddlewares) => {
     const edgeMiddlewareHandler = stackMiddlewares(edgeMiddlewares);
     const edgeResponse = await edgeMiddlewareHandler(request);
@@ -271,3 +271,4 @@ const subsequent = {
 };
 
 export { subsequent as default };
+//# sourceMappingURL=index.js.map

@@ -4,8 +4,10 @@ export default {
 	input: 'src/index.ts',
 	output: {
 		file: 'dist/index.js',
-		format: 'module'
+		format: 'module',
+    sourcemap: true,
 	},
+  external: ['next/server', 'jsonwebtoken'],
 	plugins: [
 		typescript({
 			tsconfig: 'tsconfig.json'

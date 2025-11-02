@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { Middleware } from "../middleware";
-import { generateSubrequestToken } from "../proxy";
+import { generateSubrequestToken } from "./subrequest-token";
 import { SubsequentConfig } from "../types";
 
 const METHODS_WITH_BODY = ['POST', 'PUT', 'PATCH', 'DELETE'];

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SubsequentConfig } from "../types";
-import { verifySubrequestToken } from "./subrequest-token";
+import { verifySubrequestToken } from "../utils";
 
 export const isMiddlewareRoute = (request: NextRequest, config: SubsequentConfig): boolean => {
   const { pathname } = request.nextUrl;
