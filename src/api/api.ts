@@ -22,7 +22,15 @@ export const createApiHandler = (middlewares: Middleware[], _config: SubsequentC
     const middlewareStack = stackMiddlewares(requestedMiddlewares);
 
     try {
-      const response = await middlewareStack(request);
+      const originalUrl = request.headers.get('x-subsequentjs-forwarded-url');
+      const originalMethod = request.headers.get('x-subsequentjs-forwarded-method');
+      if (!originalUrl || !originalMethod) {
+        return NextResponse.json({ error: 'Original URL or method not found' }, { status: 400 });
+      }
+
+      const originalRequest = new NextRequest(originalUrl, { method: originalMethod, headers: request.headers, body: !['GET', 'HEAD'].includes(originalMethod) ? request.body : null })
+
+      const response = await middlewareStack(originalRequest);
   
       return NextResponse.json(response);
     } catch (error) {

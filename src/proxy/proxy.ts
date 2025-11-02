@@ -39,8 +39,10 @@ export const createProxyHandler = (edgeMiddlewares: Middleware[], nodeMiddleware
         ...request.headers,
         'x-subsequentjs-middleware-token': middlewareToken,
         'x-subsequentjs-middleware': middlewareHeader,
+        'x-subsequentjs-forwarded-url': request.url,
+        'x-subsequentjs-forwarded-method': request.method,
       },
-      body,
+      body: !['GET', 'HEAD'].includes(request.method) ? body : null,
     });
 
     if (!nodeMiddlewareResponse.ok) {

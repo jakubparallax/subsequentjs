@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 
 const createMiddleware = (name, matcher, handler) => {
@@ -101,8 +101,10 @@ const createProxyHandler = (edgeMiddlewares, nodeMiddlewares, config, secret) =>
                 ...request.headers,
                 'x-subsequentjs-middleware-token': middlewareToken,
                 'x-subsequentjs-middleware': middlewareHeader,
+                'x-subsequentjs-forwarded-url': request.url,
+                'x-subsequentjs-forwarded-method': request.method,
             },
-            body,
+            body: !['GET', 'HEAD'].includes(request.method) ? body : null,
         });
         if (!nodeMiddlewareResponse.ok) {
             const { error } = await nodeMiddlewareResponse.json();
@@ -126,7 +128,13 @@ const createApiHandler = (middlewares, _config) => {
         }
         const middlewareStack = stackMiddlewares(requestedMiddlewares);
         try {
-            const response = await middlewareStack(request);
+            const originalUrl = request.headers.get('x-subsequentjs-forwarded-url');
+            const originalMethod = request.headers.get('x-subsequentjs-forwarded-method');
+            if (!originalUrl || !originalMethod) {
+                return NextResponse.json({ error: 'Original URL or method not found' }, { status: 400 });
+            }
+            const originalRequest = new NextRequest(originalUrl, { method: originalMethod, headers: request.headers, body: !['GET', 'HEAD'].includes(originalMethod) ? request.body : null });
+            const response = await middlewareStack(originalRequest);
             return NextResponse.json(response);
         }
         catch (error) {
