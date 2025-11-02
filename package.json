@@ -1,6 +1,6 @@
 {
   "name": "subsequentjs",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A Next.js library for building middleware across runtimes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,9 +10,14 @@
     "build": "rollup -c",
     "build:watch": "rollup -c -w"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["nextjs", "middleware", "subsequentjs", "nodejs", "edge"],
+  "author": "jakubszamuk",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jakubparallax/subsequentjs"
+  },
+  "homepage": "https://github.com/jakubparallax/subsequentjs",
   "packageManager": "pnpm@10.11.0",
   "peerDependencies": {
     "next": "^16.0.0",
