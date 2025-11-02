@@ -13,7 +13,7 @@ const middlewareResponse = {
     next: (_request) => Promise.resolve({ type: 'next' }),
     json: (data) => ({ type: 'json', data }),
     redirect: (url) => ({ type: 'redirect', redirect: url }),
-    code: (code, message) => ({ type: 'code', code, message }),
+    code: (code, message) => ({ type: 'code', code, message: message ?? '' }),
 };
 function toNextResponse(res) {
     switch (res.type) {

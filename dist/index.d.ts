@@ -12,7 +12,7 @@ declare const subsequent: {
         next: (_request: import("next/server").NextRequest) => Promise<import("./middleware").MiddlewareResponseType>;
         json: (data: any) => import("./middleware").MiddlewareResponseType;
         redirect: (url: URL) => import("./middleware").MiddlewareResponseType;
-        code: (code: number, message: string) => import("./middleware").MiddlewareResponseType;
+        code: (code: number, message?: string) => import("./middleware").MiddlewareResponseType;
     };
 };
 export default subsequent;

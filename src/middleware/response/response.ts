@@ -5,7 +5,7 @@ export const middlewareResponse = {
   next: (_request: NextRequest): Promise<MiddlewareResponseType> => Promise.resolve({ type: 'next' }),
   json: (data: any): MiddlewareResponseType => ({ type: 'json', data }),
   redirect: (url: URL): MiddlewareResponseType => ({ type: 'redirect', redirect: url }),
-  code: (code: number, message: string): MiddlewareResponseType => ({ type: 'code', code, message }),
+  code: (code: number, message?: string): MiddlewareResponseType => ({ type: 'code', code, message: message ?? '' }),
 }
 
 export function toNextResponse(res: MiddlewareResponseType): NextResponse {
