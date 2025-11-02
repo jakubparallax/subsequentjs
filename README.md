@@ -22,6 +22,11 @@ pnpm add subsequentjs
 yarn add subsequentjs
 ```
 
+Create a `.env.local` file and set the `SUBSEQUENTJS_SECRET` environment variable:
+```env
+SUBSEQUENTJS_SECRET=your-secret-here # a random string
+```
+
 Create a middleware function:
 ```ts
 // /lib/middleware/my-middleware.ts
