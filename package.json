@@ -1,6 +1,6 @@
 {
   "name": "subsequentjs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Next.js library for building middleware across runtimes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
